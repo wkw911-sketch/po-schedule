@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PMG Auto PO Schedule</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:16px;background:#f7f7f8;color:#222;max-width:1200px;margin:auto}
+h1{font-size:22px;margin:4px 0}.sub{color:#666;font-size:14px;margin-bottom:12px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:8px;overflow-x:auto}
+.day{background:#fff;border:1px solid #ddd;border-radius:10px;padding:8px;min-height:80px}
+.day h3{margin:0 0 6px;font-size:15px}.n{color:#888;font-weight:normal;font-size:12px}
+.o{font-size:13px;padding:4px 6px;margin:3px 0;border-radius:6px;background:#eef3ff;cursor:pointer}
+.o.diff{background:#fff3cd}.o small{color:#666;display:block}
+table{border-collapse:collapse;width:100%;background:#fff;font-size:13px;margin-top:16px}
+td,th{border-bottom:1px solid #eee;padding:6px;text-align:left}
+.card{background:#fff;border:1px solid #ddd;border-radius:10px;padding:12px;margin-top:16px}
+label{display:block;font-size:13px;margin-top:8px}select,input,textarea{width:100%;padding:6px;box-sizing:border-box;font:inherit}
+button{margin-top:10px;padding:8px 16px;border:0;border-radius:6px;background:#1a56db;color:#fff;font:inherit;cursor:pointer}
+#msg{margin-top:8px;font-size:14px}input#q{max-width:300px}
+</style></head><body>
+<h1>PMG Auto PO Schedule 自动采购单排程</h1>
+<div class="sub">Official day = Xilnex Reorder Point Setting (Auto PO, generated ~5 AM). Portal read 30 Oct 2026. Yellow = differs from the old Permenant Schedule sheet (reference only).<br>
+如发现日子不对，请在下方提交修改申请。申请需 IT 批准后才会更新 Xilnex，提交不会直接改动系统。</div>
+<div class="week" id="week"></div>
+<div class="card"><b>Request a change 申请修改</b>
+<label>Outlet 门店<select id="oc"></select></label>
+<label>Correct Auto PO day 正确的日子<select id="rd"><option>Mon</option><option>Tue</option><option>Wed</option><option>Thu</option><option>Fri</option><option>Sat</option><option>Sun</option></select></label>
+<label>Your name 姓名<input id="nm" maxlength="100"></label>
+<label>Note 备注 (optional)<textarea id="nt" rows="2" maxlength="1000"></textarea></label>
+<button id="sb">Submit request 提交</button><div id="msg"></div></div>
+<input id="q" placeholder="Search outlet 搜索门店" style="margin-top:16px">
+<table><thead><tr><th>Code</th><th>Outlet</th><th>Auto PO day</th><th>Old sheet</th><th>Area manager</th><th>Last Auto PO</th></tr></thead><tbody id="tb"></tbody></table>
+<script>
+const U="https://zzxqtbxpjexihlhcqprq.supabase.co/rest/v1",K="sb_publishable_WDwefHx-aw21f9Vc2UPtZQ_ohb-4Z-5",H={apikey:K,"Content-Type":"application/json"};
+const D=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];let O=[];
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function render(){const q=document.getElementById("q").value.toLowerCase();
+document.getElementById("week").innerHTML=D.map(d=>{const l=O.filter(o=>o.portal_day===d);return `<div class="day"><h3>${d} <span class="n">${l.length}</span></h3>${l.map(o=>`<div class="o ${o.sheet_day&&o.sheet_day!==o.portal_day?'diff':''}" data-c="${esc(o.code)}">${esc(o.name)}<small>${esc(o.code)}${!o.sheet_day?' · not in old sheet':o.sheet_day!==o.portal_day?' · old sheet '+esc(o.sheet_day):''}</small></div>`).join("")}</div>`}).join("");
+document.getElementById("tb").innerHTML=O.filter(o=>(o.code+o.name).toLowerCase().includes(q)).map(o=>`<tr><td>${esc(o.code)}</td><td>${esc(o.name)}</td><td><b>${esc(o.portal_day)}</b></td><td>${esc(o.sheet_day||"—")}</td><td>${esc(o.area_manager||"")}</td><td>${esc(o.last_auto_po_run||"")}</td></tr>`).join("");
+document.querySelectorAll(".o").forEach(e=>e.onclick=()=>{document.getElementById("oc").value=e.dataset.c;document.getElementById("oc").scrollIntoView({behavior:"smooth"})});}
+fetch(U+"/po_outlets?select=*&order=name",{headers:H}).then(r=>r.json()).then(d=>{O=d;document.getElementById("oc").innerHTML=O.map(o=>`<option value="${esc(o.code)}">${esc(o.name)} (${esc(o.code)}) – now ${esc(o.portal_day)}</option>`).join("");render()});
+document.getElementById("q").oninput=render;
+document.getElementById("sb").onclick=async()=>{const m=document.getElementById("msg"),nm=document.getElementById("nm").value.trim();if(!nm){m.textContent="Please enter your name 请填写姓名";return}
+const r=await fetch(U+"/po_change_requests",{method:"POST",headers:{...H,Prefer:"return=minimal"},body:JSON.stringify({outlet_code:document.getElementById("oc").value,requested_day:document.getElementById("rd").value,requester_name:nm,note:document.getElementById("nt").value.trim()||null})});
+m.textContent=r.ok?"Submitted. Pending IT approval 已提交，等待 IT 批准。":"Failed, please try again 提交失败，请重试。";if(r.ok)document.getElementById("nt").value=""};
+</script></body></html>
