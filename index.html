@@ -8,26 +8,50 @@ h1{font-size:22px;margin:4px 0}.sub{color:#555;font-size:14px;margin-bottom:12px
 .day{background:#fff;border:1px solid #ddd;border-radius:10px;padding:8px;min-height:80px}
 .day h3{margin:0 0 6px;font-size:15px}.n{color:#888;font-weight:normal;font-size:12px}
 .o{font-size:13px;padding:4px 6px;margin:3px 0;border-radius:6px;background:#eef3ff}
-.o.diff{background:#fff3cd}.o small{color:#666;display:block}
+.o small{color:#666;display:block}
 table{border-collapse:collapse;width:100%;background:#fff;font-size:13px;margin-top:8px}
 td,th{border-bottom:1px solid #eee;padding:6px;text-align:left}
 input#q{max-width:300px;width:100%;padding:6px;box-sizing:border-box;font:inherit;margin-top:16px}
+
+.tabs{display:flex;gap:6px;margin:8px 0}.tab{padding:8px 14px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;font:inherit}.tab.on{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.calnav{display:flex;align-items:center;gap:10px;margin:8px 0}.calnav button{padding:6px 12px;font:inherit;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer}.calnav h2{font-size:18px;margin:0;min-width:160px;text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.ch{font-weight:600;font-size:13px;text-align:center;padding:4px}
+.cd{background:#fff;border:1px solid #ddd;border-radius:8px;padding:4px;min-height:90px;font-size:11px;overflow:hidden}.cd.x{opacity:.35}.cd.t{border:2px solid #1a73e8}
+.cd .dn{font-weight:600;font-size:13px;display:flex;justify-content:space-between}.cd .dn span{color:#1a73e8;font-weight:normal;font-size:11px}
+.cd ul{list-style:none;margin:2px 0 0;padding:0;max-height:140px;overflow-y:auto}.cd li{padding:1px 0;border-bottom:1px dotted #eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:700px){.cd{min-height:60px;font-size:10px}.cd ul{max-height:90px}.cd li b{display:block}.ch{font-size:11px}}
 </style></head><body>
 <h1>PMG Auto PO Schedule</h1>
 <div class="sub">Auto PO day per outlet, from the Xilnex Reorder Point Setting (Auto PO is generated at about 5 AM). The Reorder Point daemon runs the night before, at about 10 PM per Xilnex; each outlet shows its daemon run days and the time of its last successful daemon run. <b>Data as of 30 Oct 2026.</b> <span id="cnt"></span><br>
-Yellow = differs from the old Permanent Schedule sheet (reference only). This page is view only.</div>
+This page is view only.</div>
 <div class="note"><b>Questions or changes? Please message PMG IT in WhatsApp.</b></div>
-<div class="week" id="week"></div>
+<div class="tabs"><button class="tab on" data-t="v1">Weekly View</button><button class="tab" data-t="v2">Monthly Calendar</button></div>
+<div id="v1"><div class="week" id="week"></div>
 <input id="q" placeholder="Search outlet name or code">
-<table><thead><tr><th>Code</th><th>Outlet</th><th>Auto PO day</th><th>Daemon</th><th>Daemon run days</th><th>Last daemon run</th><th>Old sheet</th><th>Area manager</th><th>Last Auto PO</th></tr></thead><tbody id="tb"></tbody></table>
+<table><thead><tr><th>Code</th><th>Outlet</th><th>Auto PO day</th><th>Daemon</th><th>Daemon run days</th><th>Last daemon run</th><th>Area manager</th><th>Last Auto PO</th></tr></thead><tbody id="tb"></tbody></table></div>
+<div id="v2" style="display:none"><div class="calnav"><button id="pm">&lsaquo; Prev</button><h2 id="mt"></h2><button id="nm">Next &rsaquo;</button></div>
+<div class="sub">Outlets with Auto PO on, listed on their Auto PO day (generated at about 5 AM). The daemon runs at about 10 PM the night before.</div>
+<div class="cal" id="cal"></div></div>
 <script>
 const U="https://zzxqtbxpjexihlhcqprq.supabase.co/rest/v1",K="sb_publishable_WDwefHx-aw21f9Vc2UPtZQ_ohb-4Z-5",H={apikey:K};
 const D=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];let O=[];
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const dl=o=>o.portal_day==="Off"?"Auto PO off":o.portal_day;
 function render(){const q=document.getElementById("q").value.toLowerCase();
-document.getElementById("week").innerHTML=D.map(d=>{const l=O.filter(o=>o.portal_day===d);return `<div class="day"><h3>${d} <span class="n">${l.length}</span></h3>${l.map(o=>`<div class="o ${o.sheet_day&&o.sheet_day!==o.portal_day?'diff':''}">${esc(o.name)}<small>${esc(o.code)}${o.sheet_day&&o.sheet_day!==o.portal_day?' · old sheet '+esc(o.sheet_day):''}<br>Daemon: ${esc(o.daemon_days||'-')}${o.last_daemon_time?' · last run '+esc(o.last_daemon_time):''}</small></div>`).join("")}</div>`}).join("");
-document.getElementById("tb").innerHTML=O.filter(o=>(o.code+" "+o.name).toLowerCase().includes(q)).map(o=>`<tr><td>${esc(o.code)}</td><td>${esc(o.name)}</td><td><b>${esc(dl(o))}</b></td><td>${esc(o.daemon_status||'')}</td><td>${esc(o.daemon_days||'')}</td><td>${esc(o.last_daemon_run||'-')}</td><td>${esc(o.sheet_day||"-")}</td><td>${esc(o.area_manager||"")}</td><td>${esc(o.last_auto_po_run||"")}</td></tr>`).join("");}
-fetch(U+"/po_outlets?select=*&order=name",{headers:H}).then(r=>r.json()).then(d=>{O=d;const on=O.filter(o=>o.portal_day!=="Off").length;document.getElementById("cnt").textContent=`${O.length} outlets: ${on} with Auto PO on, ${O.length-on} with Auto PO off.`;render()}).catch(()=>{document.getElementById("cnt").textContent="Could not load data, please refresh."});
+document.getElementById("week").innerHTML=D.map(d=>{const l=O.filter(o=>o.portal_day===d);return `<div class="day"><h3>${d} <span class="n">${l.length}</span></h3>${l.map(o=>`<div class="o">${esc(o.name)}<small>${esc(o.code)}<br>Daemon: ${esc(o.daemon_days||'-')}${o.last_daemon_time?' · last run '+esc(o.last_daemon_time):''}</small></div>`).join("")}</div>`}).join("");
+document.getElementById("tb").innerHTML=O.filter(o=>(o.code+" "+o.name).toLowerCase().includes(q)).map(o=>`<tr><td>${esc(o.code)}</td><td>${esc(o.name)}</td><td><b>${esc(dl(o))}</b></td><td>${esc(o.daemon_status||'')}</td><td>${esc(o.daemon_days||'')}</td><td>${esc(o.last_daemon_run||'-')}</td><td>${esc(o.area_manager||"")}</td><td>${esc(o.last_auto_po_run||"")}</td></tr>`).join("");}
+fetch(U+"/po_outlets?select=*&order=name",{headers:H}).then(r=>r.json()).then(d=>{O=d;const on=O.filter(o=>o.portal_day!=="Off").length;document.getElementById("cnt").textContent=`${O.length} outlets: ${on} with Auto PO on, ${O.length-on} with Auto PO off.`;render();cal()}).catch(()=>{document.getElementById("cnt").textContent="Could not load data, please refresh."});
 document.getElementById("q").oninput=render;
+let cm=new Date();cm=new Date(cm.getFullYear(),cm.getMonth(),1);
+const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const sn=n=>{n=String(n||"");return n.length>18?n.slice(0,17)+"…":n};
+function cal(){const y=cm.getFullYear(),m=cm.getMonth();document.getElementById("mt").textContent=MN[m]+" "+y;
+const st=new Date(y,m,1);st.setDate(1-((st.getDay()+6)%7));const td=new Date();let h=D.map(d=>`<div class="ch">${d}</div>`).join("");
+for(let i=0;i<42;i++){const dt=new Date(st);dt.setDate(st.getDate()+i);if(i>=35&&dt.getMonth()!==m)break;const wd=D[(dt.getDay()+6)%7];const l=O.filter(o=>o.portal_day===wd);
+const t=dt.toDateString()===td.toDateString();h+=`<div class="cd ${dt.getMonth()!==m?'x':''} ${t?'t':''}"><div class="dn">${dt.getDate()}${l.length?`<span>${l.length} outlets</span>`:''}</div>${l.length?`<ul>${l.map(o=>`<li title="${esc(o.name)}"><b>${esc(o.code)}</b> ${esc(sn(o.name))}</li>`).join("")}</ul>`:''}</div>`}
+document.getElementById("cal").innerHTML=h}
+document.getElementById("pm").onclick=()=>{cm=new Date(cm.getFullYear(),cm.getMonth()-1,1);cal()};
+document.getElementById("nm").onclick=()=>{cm=new Date(cm.getFullYear(),cm.getMonth()+1,1);cal()};
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===b));["v1","v2"].forEach(v=>document.getElementById(v).style.display=v===b.dataset.t?"":"none")});
+
 </script></body></html>
